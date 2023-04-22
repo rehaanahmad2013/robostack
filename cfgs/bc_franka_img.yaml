@@ -1,0 +1,54 @@
+# task settings
+num_train_steps: 5000000
+eval_and_log_every_steps: 100
+env_name: bcfrankatest
+action_repeat: 1
+
+exp_name: ${env_name}/bc
+save_snapshot: true
+
+# replay buffer
+replay_buffer_size: 100000
+replay_buffer_num_workers: 0
+
+# misc
+seed: 0
+device: cuda
+save_video: false
+save_train_video: false
+use_tb: true
+
+# franka settings
+hertz: 10
+
+# state settings
+from_vision: true
+
+# validation
+validation_split: 0.05
+
+# eval
+mode: eval # train or eval
+eval_mode: r2d2
+eval_dir: /iris/u/rehaan/BCARL/self-improving-robots/exp_local/bceval
+eval_checkpoint_idx: 11100
+num_eval_episodes: 100
+
+agent:
+  _target_: agents.BCFrankaAgent
+  obs_shape: ??? # to be specified later
+  action_shape: ??? # to be specified later
+  device: ${device}
+  lr: 3e-4
+  batch_size: 256
+  hidden_dim: 1024
+  feature_dim: 256
+  from_vision: ${from_vision}
+  # augmentation hyperparameter; 0 implies none
+  aug_pad: 4
+  # monitoring
+  use_tb: ${use_tb}
+
+hydra:
+  run:
+    dir: /iris/u/rehaan/BCARL/self-improving-robots/franka/${exp_name}/${seed}/${mode}/${now:%Y.%m.%d.%H.%M.%S}
