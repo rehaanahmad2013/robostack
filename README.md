@@ -33,10 +33,21 @@ Start the server:
 python scripts/server/run_server.py
 ```
 
-### Client Machine or NUC
+This is a bug that needs to be resolved, but everytime you run a robot script below, you will need to stop and re-run this run_server.py program. If you don't, you'll likely get the following error:
+
+```bash
+File "/iris/u/rehaan/robostack/r2d2/robot_env.py", line 91, in get_images
+return camera_feed[0]['array']
+IndexError: list index out of range
+```
+
+### NUC (or whichever machine you have an xbox controller connected to)
 After activating your conda environment, try collecting a trajectory:
 
 ```python
 python collect_trajectory.py
 ```
-This will let you control the Franka robot with an Xbox controller and collect a demonstration. Once sufficient demonstrations are collected, you can run franka/bc_franka_img.py. Ensure that the demo is loaded into the env_loader.py under the "bcfrankatest" if condition. 
+This will let you control the Franka robot with an Xbox controller and collect a demonstration. 
+
+### Server Machine
+Once sufficient demonstrations are collected, you can run franka/bc_franka_img.py. Ensure that the demo is loaded into the env_loader.py under the "bcfrankatest" if condition. Also make sure to go to cfgs/bc_franka_img.yaml and change the mode to either train or eval depending on what you want to do. When in the train mode, the model will save a bunch of snapshots every 1000 steps, during eval load the according one by specifying that in the cfg. 

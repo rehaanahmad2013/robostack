@@ -28,7 +28,7 @@ from_vision: true
 validation_split: 0.05
 
 # eval
-mode: eval # train or eval
+mode: train # train or eval
 eval_mode: r2d2
 eval_dir: /iris/u/rehaan/BCARL/self-improving-robots/exp_local/bceval
 eval_checkpoint_idx: 11100

@@ -2,12 +2,13 @@
 from polymetis import RobotInterface, GripperInterface
 from r2d2.robot_ik.robot_ik_solver import RobotIKSolver
 import grpc
-
+import io
 # UTILITY SPECIFIC IMPORTS
 from r2d2.misc.transformations import euler_to_quat, quat_to_euler, add_poses, pose_diff, add_quats
 from r2d2.misc.subprocess_utils import run_terminal_command, run_threaded_command
 from r2d2.misc.parameters import sudo_password
 from r2d2.camera_utils.wrappers.iris_multi_cam_wrapper import IrisMultiCameraWrapper
+import pickle
 import numpy as np
 import torch
 import time
@@ -22,29 +23,26 @@ class FrankaRobot:
         dir_path = os.path.dirname(os.path.realpath(__file__))
         self._robot_process = run_terminal_command(
             'echo ' + sudo_password + ' | sudo -S ' + 'bash ' + dir_path + '/launch_robot.sh')
-        # self._gripper_process = run_terminal_command(
-        #     'echo ' + sudo_password + ' | sudo -S ' + 'bash ' + dir_path + '/launch_gripper.sh')
+        self._gripper_process = run_terminal_command(
+            'echo ' + sudo_password + ' | sudo -S ' + 'bash ' + dir_path + '/launch_gripper.sh')
         self._server_launched = True
         time.sleep(5)
 
     def launch_robot(self):
         self._robot = RobotInterface(ip_address="localhost")
-        # self._gripper = GripperInterface(ip_address="localhost")
-        # self._max_gripper_width = self._gripper.metadata.max_width
-        self._ik_solver = RobotIKSolver()
+        self._gripper = GripperInterface(ip_address="localhost")
+        self._max_gripper_width = self._gripper.metadata.max_width
         self.camera_reader = IrisMultiCameraWrapper()
+        self._ik_solver = RobotIKSolver()
         self.ideal_position = []
         self.init_ideal = False
 
     def kill_controller(self):
         self._robot_process.kill()
-        # self._gripper_process.kill()
+        self._gripper_process.kill()
 
     def read_cameras(self):
-        camera_read = self.camera_reader.read_cameras()
-        print("---CAM READ---")
-        print(camera_read)
-        camera_feed = pickle.dumps(camera_read)
+        camera_feed = pickle.dumps(self.camera_reader.read_cameras())
         # camera_feed = [c.tolist() for c in camera_feed]
         return camera_feed
 
@@ -52,7 +50,7 @@ class FrankaRobot:
         action_dict = self.create_action_dict(command, action_space=action_space)
         
         self.update_joints(action_dict['joint_position'], velocity=False, blocking=blocking)
-        # self.update_gripper(action_dict['gripper_position'], velocity=False, blocking=blocking)
+        self.update_gripper(action_dict['gripper_position'], velocity=False, blocking=blocking)
         post_robot_state = self.get_robot_state()[0]
         action_dict["post_action_cartestian_pos"] = post_robot_state["cartesian_position"]
         action_dict["post_action_joint_pos"] = post_robot_state["joint_positions"]
@@ -107,15 +105,15 @@ class FrankaRobot:
             run_threaded_command(helper_non_blocking)
 
     def update_gripper(self, command, velocity=True, blocking=False):
-        raise Exception("cant update gripper, no gripper attached")
+        # raise Exception("cant update gripper, no gripper attached")
         if velocity:
             gripper_delta = self._ik_solver.gripper_velocity_to_delta(command)
             command = gripper_delta + self.get_gripper_position()
         
         command = float(np.clip(command, 0, 1))
-        raise Exception("Gripper not attached")
-        # self._gripper.goto(width=self._max_gripper_width * (1 - command),
-        #     speed=0.05, force=0.1, blocking=blocking)
+        # raise Exception("Gripper not attached")
+        self._gripper.goto(width=self._max_gripper_width * (1 - command),
+            speed=0.05, force=0.1, blocking=blocking)
 
     def add_noise_to_joints(self, original_joints, cartesian_noise):
         original_joints = torch.Tensor(original_joints)
@@ -142,7 +140,7 @@ class FrankaRobot:
         return self._robot.get_joint_velocities().tolist()
 
     def get_gripper_position(self):
-        raise Exception("gripper not attached, can't fetch position")
+        # raise Exception("gripper not attached, can't fetch position")
         return 1 - (self._gripper.get_state().width / self._max_gripper_width)
 
     def get_ee_pose(self):
@@ -152,7 +150,7 @@ class FrankaRobot:
 
     def get_robot_state(self):
         robot_state = self._robot.get_robot_state()
-        gripper_position = 0 #None #self.get_gripper_position()
+        gripper_position = self.get_gripper_position()
         pos, quat = self._robot.robot_model.forward_kinematics(torch.Tensor(robot_state.joint_positions))
         cartesian_position = pos.tolist() + quat_to_euler(quat.numpy()).tolist()
 
@@ -176,23 +174,23 @@ class FrankaRobot:
     def create_action_dict(self, action, action_space, robot_state=None):
         assert action_space in ['cartesian_position', 'joint_position', 'cartesian_velocity', 'joint_velocity']
         if robot_state is None: robot_state = self.get_robot_state()[0]
-        robot_state['gripper_position'] = 0
-        action[-1] = 0
+        # robot_state['gripper_position'] = 0
+        # action[-1] = 0
         action_dict = {'robot_state': robot_state}
         velocity = 'velocity' in action_space
-        action_dict['gripper_position'] = 0
-        action_dict['gripper_delta'] = 0
+        # action_dict['gripper_position'] = 0
+        # action_dict['gripper_delta'] = 0
 
-        # if velocity:
-        #     action_dict['gripper_velocity'] = action[-1]
-        #     gripper_delta = self._ik_solver.gripper_velocity_to_delta(action[-1])
-        #     gripper_position = robot_state['gripper_position'] + gripper_delta
-        #     action_dict['gripper_position'] = float(np.clip(gripper_position, 0, 1))
-        # else:
-        #     action_dict['gripper_position'] = float(np.clip(action[-1], 0, 1))
-        #     gripper_delta = action_dict['gripper_position'] - robot_state['gripper_position']
-        #     gripper_velocity = self._ik_solver.gripper_delta_to_velocity(gripper_delta)
-        #     action_dict['gripper_delta'] = gripper_velocity
+        if velocity:
+            action_dict['gripper_velocity'] = action[-1]
+            gripper_delta = self._ik_solver.gripper_velocity_to_delta(action[-1])
+            gripper_position = robot_state['gripper_position'] + gripper_delta
+            action_dict['gripper_position'] = float(np.clip(gripper_position, 0, 1))
+        else:
+            action_dict['gripper_position'] = float(np.clip(action[-1], 0, 1))
+            gripper_delta = action_dict['gripper_position'] - robot_state['gripper_position']
+            gripper_velocity = self._ik_solver.gripper_delta_to_velocity(gripper_delta)
+            action_dict['gripper_delta'] = gripper_velocity
 
         if 'cartesian' in action_space:
             if velocity:

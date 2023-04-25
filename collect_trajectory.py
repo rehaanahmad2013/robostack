@@ -10,4 +10,4 @@ env = RobotEnv()
 controller = XboxController()
 
 print('Ready')
-collect_trajectory(env, controller=controller, save_np="SAVEPATHHERE", measure_error=False, save_images=False)
+collect_trajectory(env, controller=controller, save_np="/iris/u/rehaan/testsave.npz", measure_error=False, save_images=False)
