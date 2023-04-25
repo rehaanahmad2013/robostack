@@ -18,7 +18,7 @@ import utils
 from dm_env import specs
 from logger import Logger
 from buffers.replay_buffer import ReplayBufferStorage, make_replay_loader
-from r2d2.trajectory_utils.misc import collect_trajectory, collect_trajectory2
+from r2d2.trajectory_utils.misc import collect_trajectory, eval_trajectory
 
 from video import TrainVideoRecorder, VideoRecorder
 from agents import BCFrankaAgent
